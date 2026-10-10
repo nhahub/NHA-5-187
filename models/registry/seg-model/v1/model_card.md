@@ -7,7 +7,7 @@
 | Input | 4 MRI types per patient, in this channel order: T1, T1ce, T2, FLAIR (cleaned scans from M1-T04) |
 | Output | Label map: 0 background, 1 NCR/NET, 2 edema, 3 enhancing tumor |
 | Source task | M2-T04 (nnU-Net vs 3D U-Net comparison), notebook `notebooks/M2_T04_nnUNet_vs_3D_UNet2.ipynb` |
-| Weights | `checkpoint_best.pth` (about 239 MB), kept on Drive, not in git. SHA-256 in `manifest.json` |
+| Weights | `checkpoint_best.pth` (about 250 MB, 249,741,887 bytes), kept on Drive, not in git. SHA-256 in `manifest.json` |
 | Intended use | Research prototype for this project. **Not a medical device and not validated for clinical use.** |
 
 ## Data used

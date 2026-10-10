@@ -17,7 +17,8 @@
   },
   "checkpoint_file": {
     "name": "checkpoint_best.pth",
-    "size_approx": "239M",
+    "size_bytes": 249741887,
+    "size_approx": "about 250 MB",
     "sha256": "7dcb450bf5455a0c62c9e1b368ee6341c687f555528d5ed3cd3399d88ea0f5e0",
     "location": "Drive: BrainMRI_Data/runs/M2-T04_nnunet/nnUNet_results/Dataset501_BraTS2021/nnUNetTrainer_50epochs__nnUNetPlans__3d_fullres/fold_0/checkpoint_best.pth",
     "in_git": false
