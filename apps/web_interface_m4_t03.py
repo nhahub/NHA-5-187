@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import tempfile
 import time
+import uuid
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -119,11 +120,7 @@ st.write(
 )
 
 with st.form("mri_analysis_form"):
-    case_id = st.text_input(
-        "Case ID",
-        value="BraTS2021_00110",
-        max_chars=80,
-    )
+    st.caption("A unique case reference will be generated automatically when you start the analysis.")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -171,15 +168,16 @@ if submitted:
         and not item.name.lower().endswith((".nii", ".nii.gz"))
     ]
 
-    if not case_id.strip():
-        st.error("Please enter a Case ID.")
-    elif missing:
+    if missing:
         st.error("Missing files: " + ", ".join(missing))
     elif invalid:
         st.error("Unsupported file format for: " + ", ".join(invalid))
     elif not api_base_url:
         st.error("Please enter the FastAPI Base URL in the sidebar.")
     else:
+        # Generate one internal ID per submitted analysis; users do not enter it.
+        case_id = f"case_{uuid.uuid4().hex[:12]}"
+
         files_payload = {
             name: (
                 uploaded.name,
@@ -198,7 +196,7 @@ if submitted:
                     f"{api_base_url}/predict",
                     files=files_payload,
                     data={
-                        "case_id": case_id.strip(),
+                        "case_id": case_id,
                         "run_radiomics": "false",
                     },
                     timeout=(30, 1800),
@@ -255,7 +253,7 @@ if submitted:
                                 st.write("Mask shape:", mask.shape)
                             else:
                                 st.session_state["mri_analysis"] = {
-                                    "case_id": case_id.strip(),
+                                    "case_id": case_id,
                                     "images": images,
                                     "mask": mask,
                                     "api_data": api_data,
@@ -263,7 +261,7 @@ if submitted:
                                     "mask_path": str(mask_path),
                                 }
                                 st.success(
-                                    f"Segmentation completed successfully for {case_id.strip()}!"
+                                    f"Segmentation completed successfully. Reference: {case_id}"
                                 )
 
         except requests.Timeout:
