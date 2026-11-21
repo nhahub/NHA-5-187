@@ -21,6 +21,6 @@ RUN useradd --create-home appuser && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8501
-CMD ["streamlit", "run", "apps/web_interface.py", \
+CMD ["streamlit", "run", "apps/web_interface_m4_t03.py", \
      "--server.port=8501", "--server.address=0.0.0.0", \
      "--server.headless=true", "--server.maxUploadSize=512"]
