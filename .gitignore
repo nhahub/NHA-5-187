@@ -30,6 +30,7 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .venv/
+venv/
 .vscode/
 .idea/
 .DS_Store

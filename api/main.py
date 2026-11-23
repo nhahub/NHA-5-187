@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shutil
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -22,8 +23,13 @@ RUN_RADIOMICS_DEFAULT = os.getenv("API_RUN_RADIOMICS", "true").lower() in {"1", 
 # TTA can multiply inference time substantially. It is disabled by default; set API_TTA=true to enable it.
 TTA = os.getenv("API_TTA", "false").lower() in {"1", "true", "yes"}
 MAX_UPLOAD_MB = int(os.getenv("API_MAX_UPLOAD_MB", "512"))
+# Uploaded scans are deleted as soon as a request finishes. Results (mask, radiomics CSV) stay for this many
+# minutes so the web interface can open the mask, then they are purged.
+KEEP_MINUTES = float(os.getenv("API_KEEP_MINUTES", "60"))
 MODALITIES = ("t1", "t1ce", "t2", "flair")
 REGIONS = {"TC": (1, 3), "WT": (1, 2, 3), "ET": (3,)}
+# Same rule as bmts.quantitative.longitudinal (M3-T02): no percentage when the earlier volume is this small
+MIN_BASELINE_CM3 = 1.0
 
 app = FastAPI(
     title="Brain MRI Segmentation API",
@@ -103,17 +109,37 @@ def validate_modalities(paths: dict[str, Path]) -> dict[str, Any]:
 def normalize_segmentation_axes(seg: np.ndarray, reference_shape: tuple[int, ...]) -> np.ndarray:
     """Return the prediction in the reference NIfTI array order (i, j, k).
 
-    Some inference wrappers return arrays in z,y,x order. Only reverse all axes
-    when the shape exactly matches the reversed reference shape; never guess for
-    other shapes.
+    FastSegmenter returns SimpleITK order (z, y, x), the reverse of nibabel's (i, j, k), so the axes are reversed
+    whenever the shape allows it. This also covers scans whose three sizes are equal, where both orders have the
+    same shape.
     """
     arr = np.asarray(seg)
     target = tuple(int(x) for x in reference_shape[:3])
-    if arr.shape == target:
-        return arr
     if arr.ndim == 3 and arr.shape == target[::-1]:
         return np.transpose(arr, (2, 1, 0))
-    raise ValueError(f"Prediction shape {arr.shape} does not match input NIfTI shape {target} or its reversed order.")
+    raise ValueError(f"Prediction shape {arr.shape} does not match the reversed input NIfTI shape {target[::-1]}.")
+
+
+def percent_change(before_cm3: float, after_cm3: float) -> float | None:
+    """(after - before) / before x 100, or None when the earlier volume is below MIN_BASELINE_CM3."""
+    if before_cm3 < MIN_BASELINE_CM3:
+        return None
+    return round((after_cm3 - before_cm3) / before_cm3 * 100.0, 3)
+
+
+def purge_old_runs() -> None:
+    """Delete request folders older than KEEP_MINUTES (results of earlier requests)."""
+    cutoff = time.time() - KEEP_MINUTES * 60
+    for kind in ("requests", "longitudinal"):
+        folder = OUTPUT_ROOT / kind
+        if not folder.is_dir():
+            continue
+        for run_dir in folder.iterdir():
+            try:
+                if run_dir.is_dir() and run_dir.stat().st_mtime < cutoff:
+                    shutil.rmtree(run_dir, ignore_errors=True)
+            except OSError:
+                pass
 
 def calculate_volumes(mask_path: Path, voxel_volume_mm3: float) -> dict[str, Any]:
     mask_img = nib.load(str(mask_path))
@@ -231,6 +257,7 @@ def health():
         "export_manifest_exists": (EXPORT_DIR / "deploy_manifest.json").is_file(),
         "device": DEVICE,
         "tta_enabled": TTA,
+        "results_kept_minutes": KEEP_MINUTES,
         "supported_file_extensions": [".nii", ".nii.gz"],
         "modalities_required": list(MODALITIES),
     }
@@ -244,6 +271,7 @@ async def predict(
     case_id: str = Form("case"),
     run_radiomics: bool = Form(RUN_RADIOMICS_DEFAULT),
 ):
+    purge_old_runs()
     cid = safe_id(case_id)
     request_dir = OUTPUT_ROOT / "requests" / f"{cid}_{uuid.uuid4().hex[:8]}"
     inputs_dir = request_dir / "inputs"
@@ -264,9 +292,13 @@ async def predict(
         shutil.rmtree(request_dir, ignore_errors=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
+        shutil.rmtree(request_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:
+        shutil.rmtree(request_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}") from exc
+    finally:
+        shutil.rmtree(inputs_dir, ignore_errors=True)       # never keep the uploaded scans
 
 @app.post("/predict/longitudinal")
 async def predict_longitudinal(
@@ -284,14 +316,19 @@ async def predict_longitudinal(
         raise HTTPException(status_code=422, detail="At least two visits are required.")
     if len(files) != 4 * len(visits):
         raise HTTPException(status_code=422, detail=f"Expected {4 * len(visits)} files (4 modalities per visit), received {len(files)}.")
+    purge_old_runs()
     patient = safe_id(patient_id)
     request_dir = OUTPUT_ROOT / "longitudinal" / f"{patient}_{uuid.uuid4().hex[:8]}"
     outputs = []
     try:
+        seen = set()
         for i, visit in enumerate(visits):
             if not isinstance(visit, dict):
                 raise HTTPException(status_code=422, detail=f"Visit {i} must be a JSON object.")
             visit_id = safe_id(str(visit.get("visit_id", f"visit_{i+1}")))
+            if visit_id in seen:
+                raise HTTPException(status_code=422, detail=f"Visit id {visit_id!r} is used twice.")
+            seen.add(visit_id)
             visit_dir = request_dir / visit_id
             input_dir = visit_dir / "inputs"
             input_dir.mkdir(parents=True, exist_ok=True)
@@ -305,28 +342,36 @@ async def predict_longitudinal(
                 await save_upload(upload, path)
                 paths[modality] = path
             result = run_one_case(f"{patient}_{visit_id}", paths, visit_dir / "results", run_radiomics)
+            shutil.rmtree(input_dir, ignore_errors=True)    # never keep the uploaded scans
             outputs.append({"visit_id": visit_id, **result})
         changes = []
         for before, after in zip(outputs, outputs[1:]):
             for region in ("TC", "WT", "ET"):
                 v0 = before["segmentation"]["volumes"][region]["volume_cm3"]
                 v1 = after["segmentation"]["volumes"][region]["volume_cm3"]
-                pct = None if v0 == 0 else round((v1 - v0) / v0 * 100.0, 3)
+                pct = percent_change(v0, v1)
                 changes.append({
                     "from_visit": before["visit_id"], "to_visit": after["visit_id"],
                     "region": region, "volume_before_cm3": v0, "volume_after_cm3": v1,
                     "change_cm3": round(v1 - v0, 6), "change_percent": pct,
-                    "note": "change_percent is null when baseline volume is zero"
+                    "note": "" if pct is not None else
+                            f"no percentage: earlier volume below {MIN_BASELINE_CM3:g} cm3",
                 })
         return JSONResponse({"status": "success", "patient_id": patient,
                              "pipeline": "seg-model-v1-torchscript",
                              "visits": outputs, "longitudinal_changes": changes})
     except HTTPException:
+        shutil.rmtree(request_dir, ignore_errors=True)
         raise
     except ValueError as exc:
+        shutil.rmtree(request_dir, ignore_errors=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
+        shutil.rmtree(request_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}") from exc
+    finally:
+        for visit_dir in request_dir.glob("*/inputs"):
+            shutil.rmtree(visit_dir, ignore_errors=True)
 
 @app.get("/")
 def root():

@@ -10,14 +10,14 @@ change over time, radiomics, a confidence map and a web app.
 > **Decision-support research prototype only.** It is not a medical device, it does not diagnose anyone, and it has
 > not been validated for clinical use.
 
-## Status (28 Oct 2026)
+## Status (23 Nov 2026)
 
 | Milestone | State |
 | --- | --- |
 | M1 – Data foundation | Done: datasets downloaded, every file checksummed, scans cleaned, patients split (locked test set), [EDA report](docs/EDA_REPORT.md) |
 | M2 – Segmentation model | Done: nnU-Net selected and registered with an approved [model card](models/registry/seg-model/v1/model_card.md) |
 | M3 – Analysis (volumes, change over time, radiomics, confidence map) | Done: volumes ([`results/M3-T01`](results/M3-T01/README.md)), change over time ([`results/M3-T02`](results/M3-T02/README.md)), radiomics ([`results/M3-T03`](results/M3-T03/README.md)), [confidence maps](docs/UNCERTAINTY.md), all in one [analysis pipeline](docs/PIPELINE.md) |
-| M4 – App and deployment | In progress: seg-model v1 [packaged for fast prediction](docs/DEPLOY_MODEL.md) (M4-T01: 2.1 s per scan on a T4, or the identical v1 mask in 8.6 s; [`results/M4-T01`](results/M4-T01/README.md)) |
+| M4 – App and deployment | In progress: seg-model v1 [packaged for fast prediction](docs/DEPLOY_MODEL.md) (2.1 s per scan on a T4; [`results/M4-T01`](results/M4-T01/README.md)), FastAPI backend (`api/`), web interface for one scan or several visits (`apps/web_interface_m4_t03.py`) and Docker (`docker-compose.yml`) done; Azure deployment ([`deploy/azure.md`](deploy/azure.md)) and the app test in progress |
 | M5 – Final tests and delivery | Not started |
 
 Scores on the 188 BraTS 2021 validation patients (the locked test patients have not been used yet):

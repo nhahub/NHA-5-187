@@ -186,7 +186,7 @@ quadrantChart
 | Show where the model may be wrong | Clinicians | [Confidence maps](UNCERTAINTY.md) |
 | Result within seconds | Clinicians | 2.1 s per scan on a T4 GPU ([deployment](DEPLOY_MODEL.md)) |
 | Never present results as a diagnosis | Patients, clinicians, instructor | Notice in the API, the pipeline outputs, the viewer and every document |
-| No personal data stored or published | Patients, hospital IT, dataset providers | Only public, de-identified datasets; no data in the repository; uploads processed in a per-run folder |
+| No personal data stored or published | Patients, hospital IT, dataset providers | Only public, de-identified datasets; no data in the repository; uploaded scans deleted after each request, results after 60 minutes |
 | Fair, honest evaluation | Instructor, researchers | Locked test set, external cohorts, final test run once (M5) |
 | Reproducible results | Instructor, researchers | Pinned versions, checksums, registered model with SHA-256, tests, Colab notebooks |
 
@@ -204,7 +204,8 @@ and both are kept as files:
 - **Tables** (patient lists, checksums, the split, results) are CSV and JSON files. They are small, versioned in git
   or on Drive, and easy to read in Colab.
 - **Experiments** are tracked by MLflow in its own SQLite file on Drive (`BrainMRI_Data/mlflow.db`).
-- The API is stateless. Each request writes its outputs to a new run folder; no patient record is kept between requests.
+- The API is stateless. Each request works in its own run folder. The uploaded scans are deleted as soon as the
+  request ends; the results (mask, volumes) are deleted after 60 minutes (`API_KEEP_MINUTES`).
 
 The logical model below is what a database would contain if the system moved to a hospital setting. Each entity
 already has a file that holds it, listed in section 3.3.
@@ -356,7 +357,7 @@ runs.
 - The repository holds no MRI data, no model weights and no credentials.
 - Test and external patients are locked. `bmts.data.splits` refuses them, and only the final evaluation may read them.
 - Every file is checksummed, and the model is checked by SHA-256 before every use.
-- The API keeps no patient record. Each request gets its own run folder.
+- The API keeps no patient record. Uploaded scans are deleted when the request ends, results after 60 minutes.
 
 ---
 
@@ -369,6 +370,7 @@ runs.
 | Radiologist / oncologist (main user) | See the tumor, its size, and how it changed since the last scan | Show the scan with the mask on top, volume per region, change between visits, where the model is unsure |
 | Researcher | Check the model's output against expert masks | Show Dice when an expert mask is available; export CSV results |
 | Instructor / demo audience | Understand what the system does in a few minutes | A clear flow from upload to result, with plain labels |
+| Patient or family member | Understand their own scan and how it changed | Plain words instead of medical terms (T1, FLAIR, enhancing tumor), sizes in cm³ with a comparison, changes written as sentences, and a clear reminder that a doctor must interpret the result |
 
 ### 4.2 Design principles
 
@@ -406,8 +408,14 @@ mask on top:
 - a patient/timepoint list, an MRI type selector (FLAIR by default) and an axial slice slider;
 - a legend naming the labels visible on the slice, and the decision-support caption under the title.
 
-**Web interface (M4-T03, in progress by Essam Mohamed).** It is built on the FastAPI backend and follows the flow
-above. The layouts below are the design reference for its four screens.
+**Web interface (M4-T03, `apps/web_interface_m4_t03.py`, Streamlit, built by Essam Mohamed; plain-language revision 23 Nov).** It is built on the FastAPI backend and follows the flow above:
+- one drop area per scan for all four files; each file is matched to its MRI type by its name, and the user can correct the match;
+- every MRI type and region explained in everyday words ("Whole abnormal area", "Tumor core", "Active part"), sizes in cm³ (1 cm³ = 1 ml);
+- "Compare scans taken at different times": a size table and chart per scan, and each change as a sentence ("grew by 1.2 cm³ (+15%)");
+- the viewer with a color legend; the service address, timings and file paths in collapsed "Technical" sections;
+- the notice that a doctor must interpret the results at the top of the page.
+
+The layouts below were the design reference for its screens.
 
 Screen 1: upload
 ```

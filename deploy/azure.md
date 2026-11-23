@@ -53,8 +53,8 @@ The resource group itself can be in any region. The resources inside it must be 
 Azure pulls the code from GitHub and builds it, so Docker Desktop is not needed. Run one build per image. The API command is the one we ran; the web one is the same pattern with `web/Dockerfile` (confirm it against your own history).
 
 ```bash
-az acr build --registry brainmriyasmin187 --image brainmri-api:v1 --file api/Dockerfile https://github.com/yasmeenmahmoudeng/NHA-5-187.git#main
-az acr build --registry brainmriyasmin187 --image brainmri-web:v1 --file web/Dockerfile https://github.com/yasmeenmahmoudeng/NHA-5-187.git#main
+az acr build --registry brainmriyasmin187 --image brainmri-api:v1 --file api/Dockerfile https://github.com/nhahub/NHA-5-187.git#main
+az acr build --registry brainmriyasmin187 --image brainmri-web:v1 --file web/Dockerfile https://github.com/nhahub/NHA-5-187.git#main
 ```
 
 Check the result:
@@ -174,6 +174,8 @@ cat >> app.yaml <<'EOF'
         value: "false"
       - name: API_MAX_UPLOAD_MB
         value: "512"
+      - name: API_KEEP_MINUTES
+        value: "60"
       volumeMounts:
       - volumeName: models
         mountPath: /models/seg-model-v1-torchscript

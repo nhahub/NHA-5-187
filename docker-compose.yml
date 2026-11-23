@@ -12,6 +12,7 @@ services:
       API_RUN_RADIOMICS: "true"
       API_TTA: "false"
       API_MAX_UPLOAD_MB: "512"
+      API_KEEP_MINUTES: "60"        # results are deleted after this; uploaded scans right after each request
     volumes:
       # export folder: deploy_manifest.json, seg_model.torchscript.pt, plans.json, dataset.json
       - ./models/seg-model-v1-torchscript:/models/seg-model-v1-torchscript:ro
