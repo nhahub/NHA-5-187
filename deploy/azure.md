@@ -228,9 +228,23 @@ az containerapp logs show --name brainmri-app --resource-group brainmri-rg --con
 
 Then open the app URL (`https://<app-fqdn>/`):
 
-1. Click **Test Backend Connection**. Expect `Backend is connected!`, with `export_dir_exists: true` and `export_manifest_exists: true`.
-2. Upload T1, T1ce, T2 and FLAIR for one case and click **Analyze Scan**.
+1. In the left sidebar ("Technical settings"), click **Check the connection**. Expect `The analysis service is ready.`; under **Details**, `export_dir_exists: true`, `export_manifest_exists: true` and `results_kept_minutes: 60`.
+2. Choose **Measure one scan**, drop the T1, T1ce, T2 and FLAIR files of one validation case (for example BraTS2021_00110) and click **Measure the tumor**.
 3. In the API log you should see `POST /predict ... 200 OK`. On CPU our test took about 1.5 minutes. The warning `perform_everything_on_device=True is only supported for cuda devices` is expected on CPU and harmless.
+
+## Updating the app after code changes
+
+The images are built from `main`, so a change merged on GitHub reaches Azure only after a rebuild. Use a new tag each
+time (here `v2`), so the Container App starts a new revision:
+
+```bash
+az acr build --registry brainmriyasmin187 --image brainmri-api:v2 --file api/Dockerfile https://github.com/nhahub/NHA-5-187.git#main
+az acr build --registry brainmriyasmin187 --image brainmri-web:v2 --file web/Dockerfile https://github.com/nhahub/NHA-5-187.git#main
+az containerapp update --name brainmri-app --resource-group brainmri-rg --container-name api --image brainmriyasmin187.azurecr.io/brainmri-api:v2
+az containerapp update --name brainmri-app --resource-group brainmri-rg --container-name web --image brainmriyasmin187.azurecr.io/brainmri-web:v2
+```
+
+Then repeat the checks in section 7.
 
 ## 8. Cost control
 

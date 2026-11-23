@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 import time
 import uuid
@@ -29,7 +30,7 @@ st.set_page_config(
     layout="wide",
 )
 
-from apps.m2_t05_viewer import load_volume, render_slice
+from apps.m2_t05_viewer import LABEL_COLORS, load_volume, render_slice
 
 MODALITIES = ("t1", "t1ce", "t2", "flair")
 API_DEFAULT = os.getenv("BRAINMRI_API_URL", "http://127.0.0.1:8000")
@@ -48,13 +49,15 @@ REGION_INFO = {
     "TC": ("Tumor core", "the tumor itself, without the swelling"),
     "ET": ("Active part", "the part of the core that lights up after the contrast dye"),
 }
-# Colors used by the viewer for each label (same as apps/m2_t05_viewer.render_slice)
+# Legend for the viewer's label colors (the colors come from apps/m2_t05_viewer.LABEL_COLORS)
 LABEL_LEGEND = [
-    ("#FF3B30", "Inner part of the tumor"),
-    ("#33D64A", "Swelling around the tumor"),
-    ("#0A85FF", "Active part of the tumor"),
-    ("#FFD60A", "Space left by earlier surgery"),
+    (LABEL_COLORS[1], "Inner part of the tumor"),
+    (LABEL_COLORS[2], "Swelling around the tumor"),
+    (LABEL_COLORS[3], "Active part of the tumor"),
+    (LABEL_COLORS[4], "Space left by earlier surgery"),
 ]
+# Words in a file name that only say which kind of image it is (removed when comparing file names)
+MODALITY_WORDS = {"t1", "t1ce", "t1c", "t1gd", "gd", "t2", "flair", "contrast", "t2flair", "nii", "gz"}
 SAME_CM3 = 0.1          # changes smaller than this are described as "about the same"
 
 DISCLAIMER = (
@@ -102,6 +105,27 @@ def guess_modality(filename: str) -> str | None:
     return None
 
 
+def scan_name(filename: str) -> str:
+    """The part of a file name that names the scan: BraTS2021_00110_t1ce.nii.gz -> 'brats2021_00110'."""
+    words = [w for w in re.split(r"[_\-. ]+", filename.lower()) if w]
+    return "_".join(w for w in words if w not in MODALITY_WORDS)
+
+
+def different_scans_warning(choice: dict) -> str | None:
+    """A warning when the file names suggest the four files come from different scans or people.
+
+    The service can only refuse files whose image sizes differ; prepared scans from different people often have the
+    same size, so the file names are the only clue. Files named only after the image type (t1.nii.gz) are skipped.
+    """
+    names = {choice[m].name: scan_name(choice[m].name) for m in MODALITIES if choice.get(m) is not None}
+    if len({n for n in names.values() if n}) <= 1:
+        return None
+    listed = ", ".join(f"`{name}`" for name in names)
+    return ("These files seem to come from different scans or different people: " + listed + ". "
+            "All four files must be from the same scan, otherwise the results are wrong. "
+            "Please check them before you continue.")
+
+
 def choose_scan_files(key: str) -> dict:
     """One drop area for the four files of a scan; each file is matched to its MRI type, and the user can fix it."""
     uploaded = st.file_uploader(
@@ -127,6 +151,9 @@ def choose_scan_files(key: str) -> dict:
         default = options.index(guesses[modality]) if guesses[modality] else 0
         picked = column.selectbox(short, options, index=default, key=f"{key}_{modality}", help=meaning.capitalize())
         choice[modality] = by_name.get(picked)
+    warning = different_scans_warning(choice)
+    if warning:
+        st.warning(warning)
     return choice
 
 

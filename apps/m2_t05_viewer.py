@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
 import streamlit as st
-from matplotlib.colors import ListedColormap
+from matplotlib.colors import ListedColormap, to_rgba
 
 MODALITIES = ("t1", "t1ce", "t2", "flair")
 SEG = "seg"
@@ -32,11 +32,12 @@ LABEL_NAMES = {
     3: "Enhancing tumor",
     4: "Resection cavity",
 }
+# Same colors as the EDA and confidence-map figures (docs/PROJECT_DOCUMENTATION.md, section 4.2)
 LABEL_COLORS = {
-    1: "#ff3b30",  # red
-    2: "#32d74b",  # green
-    3: "#0a84ff",  # blue
-    4: "#ffd60a",  # yellow
+    1: "#eb6834",  # orange: necrotic core
+    2: "#1baf7a",  # green: edema
+    3: "#e87ba4",  # pink: enhancing tumor
+    4: "#eda100",  # amber: resection cavity
 }
 
 
@@ -146,13 +147,7 @@ def render_slice(
     ax.imshow(base, cmap="gray", interpolation="nearest")
     if show_mask:
         # Discrete colors: 0 transparent, 1..4 tumor labels.
-        colors = [
-            (0, 0, 0, 0),
-            (1.0, 0.23, 0.19, opacity),
-            (0.20, 0.84, 0.29, opacity),
-            (0.04, 0.52, 1.0, opacity),
-            (1.0, 0.84, 0.04, opacity),
-        ]
+        colors = [(0, 0, 0, 0)] + [to_rgba(LABEL_COLORS[label], opacity) for label in (1, 2, 3, 4)]
         cmap = ListedColormap(colors)
         ax.imshow(mask_slice, cmap=cmap, vmin=0, vmax=4, interpolation="nearest")
     ax.set_axis_off()

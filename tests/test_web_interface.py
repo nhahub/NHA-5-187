@@ -72,3 +72,29 @@ def test_missing_or_repeated_files_get_a_clear_message():
     assert check(files) is None
     assert "Missing" in check({**files, "t2": None}) and "T2" in check({**files, "t2": None})
     assert "twice" in check({**files, "t2": files["t1"]})
+
+
+@pytest.mark.parametrize("name, expected", [
+    ("BraTS2021_00110_t1ce.nii.gz", "brats2021_00110"),
+    ("RHUH-0002_0_flair.nii.gz", "rhuh_0002_0"),
+    ("patient_T1Gd.nii", "patient"),
+    ("t2.nii.gz", ""),
+])
+def test_scan_name_drops_the_image_type(name, expected):
+    assert helpers()["scan_name"](name) == expected
+
+
+def test_files_from_different_scans_get_a_warning():
+    h = helpers()
+    warn = h["different_scans_warning"]
+
+    class File:
+        def __init__(self, name):
+            self.name = name
+
+    same = {m: File(f"BraTS2021_00110_{m}.nii.gz") for m in h["MODALITIES"]}
+    assert warn(same) is None
+    mixed = {**same, "flair": File("BraTS2021_00111_flair.nii.gz")}
+    assert "different scans" in warn(mixed) and "BraTS2021_00111_flair.nii.gz" in warn(mixed)
+    plain = {m: File(f"{m}.nii.gz") for m in h["MODALITIES"]}
+    assert warn(plain) is None                                        # no scan name in the file names: no clue

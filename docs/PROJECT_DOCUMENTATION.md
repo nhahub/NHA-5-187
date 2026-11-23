@@ -378,8 +378,8 @@ runs.
 2. **The image comes first.** The scan and the mask take most of the screen; the numbers sit beside them.
 3. **Show uncertainty.** The confidence map is one click away, so a doctor knows where to check the mask.
 4. **Plain words.** Region names are spelled out ("Enhancing tumor (ET)"), and volumes are given in cm³.
-5. **Same colors everywhere.** NCR orange `#eb6834`, edema green `#1baf7a`, enhancing tumor pink `#e87ba4`, uncertainty
-   yellow to red. The colors are also told apart by legend and text, not by color alone.
+5. **Same colors everywhere.** NCR orange `#eb6834`, edema green `#1baf7a`, enhancing tumor pink `#e87ba4`, resection
+   cavity amber `#eda100`, uncertainty yellow to red. The viewer and the web interface use these colors too. The colors are also told apart by legend and text, not by color alone.
 6. **Refuse early.** Wrong file types or mismatched scans get a clear message before any computing starts.
 
 ### 4.3 User flow
@@ -410,6 +410,7 @@ mask on top:
 
 **Web interface (M4-T03, `apps/web_interface_m4_t03.py`, Streamlit, built by Essam Mohamed; plain-language revision 23 Nov).** It is built on the FastAPI backend and follows the flow above:
 - one drop area per scan for all four files; each file is matched to its MRI type by its name, and the user can correct the match;
+- a warning when the file names suggest that the four files come from different scans or people;
 - every MRI type and region explained in everyday words ("Whole abnormal area", "Tumor core", "Active part"), sizes in cm³ (1 cm³ = 1 ml);
 - "Compare scans taken at different times": a size table and chart per scan, and each change as a sentence ("grew by 1.2 cm³ (+15%)");
 - the viewer with a color legend; the service address, timings and file paths in collapsed "Technical" sections;
@@ -478,3 +479,7 @@ The numbers in these layouts are placeholders that show the format. They are not
 - Results, volumes and the decision-support notice are readable at 1366 × 768 and on a projector.
 - Region colors are explained by a legend; information is never given by color alone.
 - The demo uses only validation or longitudinal cases, never locked test patients.
+
+Known limit: the service refuses four files only when their image sizes differ. Prepared scans of different people
+usually have the same size (240 × 240 × 155), so a mix-up is caught only by the file-name warning above, not by the
+service itself.
