@@ -50,7 +50,7 @@ the team's Google Drive; the repository keeps only code, configs, small result f
 | `src/bmts/` | Python package: scan cleaning (`data/cleaning`), data loader (`data/datasets`, `data/augmentation`), metrics (`evaluation`), 3D U-Net model and training loop (`segmentation`), split rules (`data/splits.py`), volumes and change over time (`quantitative`), radiomics (`radiomics`), confidence maps (`uncertainty`), the analysis pipeline (`pipeline`), the exported model and fast segmenter (`deploy`) |
 | `configs/` | YAML settings for data, models and experiments (`training/EXP-0001.yaml`) |
 | `scripts/` | Command-line tools: `download_data.py`, `smoke_train.py`, `train.py`, `eda.py`, `uncertainty.py`, `analyze.py` (the whole analysis for one patient), `export_model.py` and `segment.py` (fast prediction) |
-| `notebooks/` | Colab notebooks, numbered in the order they are used (download → patient list → loader test → training → EDA → M3 tasks → `08_m3_t05_analysis_pipeline` → `09_m4_t01_export_model`), plus the M2 comparison and viewer notebooks |
+| `notebooks/` | Colab notebooks, numbered in the order they are used (download → patient list → loader test → training → EDA → M3 tasks → `08_m3_t05_analysis_pipeline` → `09_m4_t01_export_model` → `10_m4_t06_demo_cases`, which puts ready-to-upload test scans in `BrainMRI_Data/demo_cases/`), plus the M2 comparison and viewer notebooks |
 | `apps/` | MRI slice viewer with the tumor mask on top (Streamlit) |
 | `models/registry/` | Registered model versions: model card, manifest, inference settings, nnU-Net plans (weights on Drive) |
 | `results/` | Small result files: EDA tables and charts (`eda/`), the M2-T04 model comparison, one folder per M3 task, the M4-T01 speed check |

@@ -478,7 +478,9 @@ The numbers in these layouts are placeholders that show the format. They are not
 - Every error message says what went wrong and what to do next.
 - Results, volumes and the decision-support notice are readable at 1366 × 768 and on a projector.
 - Region colors are explained by a legend; information is never given by color alone.
-- The demo uses only validation or longitudinal cases, never locked test patients.
+- The demo uses only validation or longitudinal cases, never locked test patients. Ready-to-upload test scans are in
+  the Drive folder `BrainMRI_Data/demo_cases/` (BraTS2021_00110 and the three visits of RHUH-0002, made by
+  `notebooks/10_m4_t06_demo_cases.ipynb`).
 
 Known limit: the service refuses four files only when their image sizes differ. Prepared scans of different people
 usually have the same size (240 × 240 × 155), so a mix-up is caught only by the file-name warning above, not by the

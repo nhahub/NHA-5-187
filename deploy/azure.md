@@ -229,7 +229,7 @@ az containerapp logs show --name brainmri-app --resource-group brainmri-rg --con
 Then open the app URL (`https://<app-fqdn>/`):
 
 1. In the left sidebar ("Technical settings"), click **Check the connection**. Expect `The analysis service is ready.`; under **Details**, `export_dir_exists: true`, `export_manifest_exists: true` and `results_kept_minutes: 60`.
-2. Choose **Measure one scan**, drop the T1, T1ce, T2 and FLAIR files of one validation case (for example BraTS2021_00110) and click **Measure the tumor**.
+2. Choose **Measure one scan**, drop the T1, T1ce, T2 and FLAIR files of one validation case (for example BraTS2021_00110 from the Drive folder `BrainMRI_Data/demo_cases/`) and click **Measure the tumor**.
 3. In the API log you should see `POST /predict ... 200 OK`. On CPU our test took about 1.5 minutes. The warning `perform_everything_on_device=True is only supported for cuda devices` is expected on CPU and harmless.
 
 ## Updating the app after code changes
