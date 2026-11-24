@@ -2,6 +2,11 @@ name: Build and push images to ACR
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag
+        required: true
+        default: v2
 
 env:
   REGISTRY: brainmriyasmin187.azurecr.io
@@ -32,4 +37,4 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           push: true
-          tags: ${{ env.REGISTRY }}/${{ matrix.image }}:v1
+          tags: ${{ env.REGISTRY }}/${{ matrix.image }}:${{ inputs.tag }}
