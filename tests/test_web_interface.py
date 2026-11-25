@@ -31,13 +31,34 @@ def helpers():
 def test_page_starts_with_the_disclaimer_and_both_modes(page):
     assert not page.exception
     assert any("Always discuss the results with your doctor" in w.value for w in page.warning)
-    assert page.radio[0].options == ["Measure one scan", "Compare scans taken at different times"]
+    assert [tab.label for tab in page.tabs] == ["Measure one scan", "Compare scans taken at different times"]
 
 
-def test_compare_mode_starts_without_errors(page):
-    page.radio[0].set_value("Compare scans taken at different times").run()
+def test_both_modes_stay_on_the_page(page):
+    """Both parts are built on every run, so switching tabs does not drop the files added in the other one."""
     assert not page.exception
-    assert any(b.label == "Compare the scans" for b in page.button)
+    assert {"Measure the tumor", "Compare the scans"} <= {b.label for b in page.button}
+
+
+def test_results_stay_when_moving_through_the_slices():
+    import numpy as np
+
+    app = AppTest.from_file(str(APP), default_timeout=60)
+    app.run()
+    image = np.zeros((24, 24, 16), dtype=np.float32)
+    mask = np.zeros((24, 24, 16), dtype=np.uint8)
+    mask[8:12, 8:12, 6:10] = 2
+    app.session_state["single_analysis"] = {
+        "case_id": "case_test", "elapsed": 1.0, "mask_path": "mask.nii.gz", "mask": mask,
+        "images": {m: image for m in ("t1", "t1ce", "t2", "flair")},
+        "result": {"segmentation": {"volumes": {"WT": {"volume_cm3": 91.0}, "TC": {"volume_cm3": 14.7},
+                                                "ET": {"volume_cm3": 14.6}}}},
+    }
+    app.run()
+    app.slider(key="single_slice").set_value(3).run()
+    assert not app.exception
+    assert app.slider(key="single_slice").value == 3
+    assert [m.value for m in app.metric] == ["91.0 cm³", "14.7 cm³", "14.6 cm³"]
 
 
 @pytest.mark.parametrize("name, expected", [

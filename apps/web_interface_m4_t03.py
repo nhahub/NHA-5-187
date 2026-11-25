@@ -203,8 +203,12 @@ def legend_markdown() -> str:
     return "".join(swatch.format(color, text) for color, text in LABEL_LEGEND)
 
 
+@st.fragment
 def scan_viewer(images: dict, masks: dict, titles: dict, key: str, modality_choices=MODALITIES) -> None:
-    """Slice viewer for one or more scans side by side; images[scan][modality] and masks[scan] are arrays."""
+    """Slice viewer for one or more scans side by side; images[scan][modality] and masks[scan] are arrays.
+
+    A fragment: moving the slider or changing a display option redraws only the pictures, not the whole page.
+    """
     scan_ids = list(masks)
     available = [m for m in modality_choices if all(m in images[s] for s in scan_ids)]
     control1, control2 = st.columns([1, 2])
@@ -317,17 +321,16 @@ with st.expander("What does the tool measure?"):
     ), hide_index=True, use_container_width=True)
     st.write("Sizes are given in cm³. 1 cm³ is 1 milliliter, about a fifth of a teaspoon.")
 
-mode = st.radio(
-    "What would you like to do?",
-    ["Measure one scan", "Compare scans taken at different times"],
-    horizontal=True,
-)
+st.write("What would you like to do?")
+# Tabs instead of a radio button: both parts stay on the page, so switching between them keeps the added files and
+# the results (Streamlit forgets the files of a part that is not shown, and they would have to be uploaded again).
+single_tab, compare_tab = st.tabs(["Measure one scan", "Compare scans taken at different times"])
 
 
 # ---------------------------------------------------------------------------
 # One scan
 # ---------------------------------------------------------------------------
-if mode == "Measure one scan":
+with single_tab:
     st.subheader("1. Add the scan")
     choice = choose_scan_files("single")
 
@@ -392,7 +395,7 @@ if mode == "Measure one scan":
 # ---------------------------------------------------------------------------
 # Several scans of the same person
 # ---------------------------------------------------------------------------
-else:
+with compare_tab:
     st.subheader("1. Add the scans, oldest first")
     st.write("Add every scan of the same person in the order they were taken. Give each one a name or a date.")
     n_scans = int(st.number_input("How many scans?", min_value=2, max_value=MAX_VISITS, value=2, step=1))

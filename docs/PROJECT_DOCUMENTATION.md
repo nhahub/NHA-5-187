@@ -409,6 +409,8 @@ mask on top:
 - a legend naming the labels visible on the slice, and the decision-support caption under the title.
 
 **Web interface (M4-T03, `apps/web_interface_m4_t03.py`, Streamlit, built by Essam Mohamed; plain-language revision 23 Nov).** It is built on the FastAPI backend and follows the flow above:
+- "Measure one scan" and "Compare scans taken at different times" are two tabs; switching between them keeps the added files and the results, so nothing has to be uploaded or analyzed again;
+- moving through the slices or changing a display option redraws only the pictures, not the whole page;
 - one drop area per scan for all four files; each file is matched to its MRI type by its name, and the user can correct the match;
 - a warning when the file names suggest that the four files come from different scans or people;
 - every MRI type and region explained in everyday words ("Whole abnormal area", "Tumor core", "Active part"), sizes in cm³ (1 cm³ = 1 ml);
